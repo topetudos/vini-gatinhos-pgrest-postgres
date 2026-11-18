@@ -1,0 +1,791 @@
+<div class="app-container">
+  <!-- Toast Notificações -->
+  @if (toast) {
+    <div class="toast" [class]="'toast-' + toast.type">
+      <span>{{ toast.message }}</span>
+      <button class="toast-close" (click)="toast = null">&times;</button>
+    </div>
+  }
+
+  <!-- Header Superior -->
+  <header class="app-header">
+    <div class="header-brand">
+      <span class="brand-icon">🐱</span>
+      <div>
+        <h1 class="brand-title">Gatinhos RPG</h1>
+        <p class="brand-subtitle">Aiven PostgreSQL & PostgREST com Auth0 M2M</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      @if (currentUser) {
+        <div class="user-badge" [class.is-admin]="currentUser.isadmin">
+          <span class="user-avatar">👤</span>
+          <div class="user-info">
+            <span class="user-name">{{ currentUser.nome }} (ID: {{ currentUser.id }})</span>
+            <span class="user-role">{{ currentUser.isadmin ? '🛡️ Administrador' : '🎮 Jogador' }}</span>
+          </div>
+        </div>
+      }
+
+      <button class="btn btn-secondary" (click)="abrirConfig()" title="Configurações de Conexão">
+        ⚙️ Configurações
+      </button>
+
+      @if (currentUser) {
+        <button class="btn btn-danger-outline" (click)="realizarLogout()" title="Sair da conta">
+          🚪 Sair
+        </button>
+      }
+    </div>
+  </header>
+
+  <!-- Conteúdo Principal -->
+  <main class="app-content">
+
+    <!-- TELA DE LOGIN (Se não estiver logado) -->
+    @if (!currentUser) {
+      <div class="login-wrapper">
+        <div class="card login-card">
+          <div class="card-header text-center">
+            <span class="cat-hero-icon">🐾</span>
+            <h2>Entrar no Jogo</h2>
+            <p class="text-muted">Informe suas credenciais para autenticar via PostgREST</p>
+          </div>
+
+          @if (!auth0.isConfigured()) {
+            <div class="alert alert-warning">
+              ⚠️ <strong>Parâmetros não configurados!</strong>
+              <p>É necessário preencher os 5 parâmetros Auth0 e Aiven para conectar à API.</p>
+              <button class="btn btn-sm btn-warning mt-2" (click)="abrirConfig()">
+                Preencher Configurações Agora
+              </button>
+            </div>
+          }
+
+          @if (loginError) {
+            <div class="alert alert-danger">
+              ❌ {{ loginError }}
+            </div>
+          }
+
+          <form (submit)="realizarLogin(); $event.preventDefault();" class="login-form">
+            <div class="form-group">
+              <label for="loginId">ID do Jogador (app_userid)</label>
+              <input
+                id="loginId"
+                type="number"
+                class="form-control"
+                [(ngModel)]="loginId"
+                name="loginId"
+                placeholder="Ex: 1"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="loginPassword">Senha do Jogador (app_userpassword)</label>
+              <input
+                id="loginPassword"
+                type="password"
+                class="form-control"
+                [(ngModel)]="loginPassword"
+                name="loginPassword"
+                placeholder="Sua senha"
+                required
+              />
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block" [disabled]="loginLoading">
+              @if (loginLoading) {
+                <span>⏳ Autenticando com Auth0 e PostgreSQL...</span>
+              } @else {
+                <span>🚀 Entrar no Jogo</span>
+              }
+            </button>
+          </form>
+
+          <div class="login-help">
+            <h4>🛡️ Arquitetura Segura:</h4>
+            <p>Todas as requisições utilizam token Bearer do Auth0 e consistem <code>app_userid</code> e <code>app_userpassword</code> diretamente nas funções internas com <code>SECURITY DEFINER</code>.</p>
+            <div class="accounts-hint">
+              <strong>Contas disponíveis para teste:</strong>
+              <ul>
+                <li><code>ID: 1</code> | Senha: <code>123</code> &rarr; <strong>Jones (Admin)</strong></li>
+                <li><code>ID: 2</code> | Senha: <code>123</code> &rarr; <strong>Bini (Jogador)</strong></li>
+                <li><code>ID: 3</code> | Senha: <code>123</code> &rarr; <strong>Kuma (Jogador)</strong></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- PAINEL PRINCIPAL (Quando logado) -->
+    @if (currentUser) {
+      <div class="dashboard-wrapper">
+        <!-- Navegação por Abas -->
+        <nav class="nav-tabs">
+          <button
+            class="tab-btn"
+            [class.active]="activeTab === 'gatinhos'"
+            (click)="activeTab = 'gatinhos'; carregarGatinhos();"
+          >
+            🐾 Meus Gatinhos
+            <span class="badge">{{ gatinhos.length }}</span>
+          </button>
+
+          <button
+            class="tab-btn"
+            [class.active]="activeTab === 'ranking'"
+            (click)="activeTab = 'ranking'; carregarRanking();"
+          >
+            🏆 Ranking Top 5
+          </button>
+
+          <button
+            class="tab-btn"
+            [class.active]="activeTab === 'racas'"
+            (click)="activeTab = 'racas'; carregarRacas();"
+          >
+            📖 Raças & Bônus
+          </button>
+
+          @if (currentUser.isadmin) {
+            <button
+              class="tab-btn tab-admin"
+              [class.active]="activeTab === 'admin'"
+              (click)="activeTab = 'admin'; carregarAdminData();"
+            >
+              🛡️ Painel Admin
+            </button>
+          }
+        </nav>
+
+        <!-- ABA 1: MEUS GATINHOS -->
+        @if (activeTab === 'gatinhos') {
+          <section class="tab-pane">
+            <div class="pane-header">
+              <div>
+                <h2>Meus Gatinhos</h2>
+                <p class="text-muted">Faça carinho para aumentar o nível do seu gatinho!</p>
+              </div>
+
+              <button class="btn btn-success" (click)="adotarNovoGato()" [disabled]="adoptingCat">
+                @if (adoptingCat) {
+                  <span>⏳ Sorteando novo gatinho...</span>
+                } @else {
+                  <span>🎁 Adotar / Ganhar Novo Gatinho</span>
+                }
+              </button>
+            </div>
+
+            @if (gatinhosLoading) {
+              <div class="loading-state">
+                <span class="spinner"></span>
+                <p>Carregando gatinhos...</p>
+              </div>
+            } @else if (gatinhos.length === 0) {
+              <div class="empty-state card">
+                <span class="empty-icon">😿</span>
+                <h3>Você ainda não possui nenhum gatinho!</h3>
+                <p>Clique no botão acima para ganhar seu primeiro gatinho do jogo.</p>
+                <button class="btn btn-success mt-3" (click)="adotarNovoGato()">
+                  🎁 Ganhar Primeiro Gatinho
+                </button>
+              </div>
+            } @else {
+              <div class="gatinhos-grid">
+                @for (gato of gatinhos; track gato.id) {
+                  <div class="cat-card card" [attr.data-cor]="gato.cor">
+                    <!-- Topo do Card -->
+                    <div class="cat-header">
+                      <div class="cat-badge-avatar" [attr.data-cor]="gato.cor">
+                        🐱
+                      </div>
+                      <div class="cat-title-area">
+                        @if (renamingCatId === gato.id) {
+                          <div class="inline-rename">
+                            <input
+                              type="text"
+                              class="form-control-sm"
+                              [(ngModel)]="newCatName"
+                              maxlength="20"
+                              placeholder="Novo nome"
+                            />
+                            <button class="btn btn-sm btn-primary" (click)="confirmarRenomear(gato.id)">Salvar</button>
+                            <button class="btn btn-sm btn-secondary" (click)="cancelarRenomear()">✕</button>
+                          </div>
+                        } @else {
+                          <div class="cat-name-row">
+                            <h3 class="cat-name">{{ gato.nome }}</h3>
+                            <button class="btn-icon" (click)="iniciarRenomear(gato)" title="Renomear gatinho">✏️</button>
+                          </div>
+                        }
+                        <div class="cat-tags">
+                          <span class="tag tag-raca">{{ gato.raca }}</span>
+                          <span class="tag tag-cor">{{ getCorBadge(gato.cor) }}</span>
+                          <span class="tag tag-id">#{{ gato.id }}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Level & Estatísticas -->
+                    <div class="cat-level-banner">
+                      <span class="level-label">NÍVEL</span>
+                      <span class="level-value">⭐ {{ gato.level }}</span>
+                    </div>
+
+                    <!-- Bônus da Raça -->
+                    <div class="cat-bonuses">
+                      <div class="bonus-pill" title="Pontos por carinho na pata">
+                        <span class="bonus-label">🐾 Pata:</span>
+                        <span class="bonus-val">+{{ gato.pata }}</span>
+                      </div>
+                      <div class="bonus-pill" title="Pontos por carinho na barriga">
+                        <span class="bonus-label">🫄 Barriga:</span>
+                        <span class="bonus-val">+{{ gato.barriga }}</span>
+                      </div>
+                      <div class="bonus-pill" title="Pontos por carinho no rabo">
+                        <span class="bonus-label">🐈 Rabo:</span>
+                        <span class="bonus-val">+{{ gato.rabo }}</span>
+                      </div>
+                    </div>
+
+                    <!-- Botões de Ação de Carinho -->
+                    <div class="cat-actions">
+                      <button
+                        class="btn btn-pet btn-pata"
+                        (click)="darCarinho(gato, 'pata')"
+                        [disabled]="actionLoadingCatId === gato.id"
+                      >
+                        🐾 Carinho na Pata (+{{ gato.pata }})
+                      </button>
+
+                      <button
+                        class="btn btn-pet btn-barriga"
+                        (click)="darCarinho(gato, 'barriga')"
+                        [disabled]="actionLoadingCatId === gato.id"
+                      >
+                        🫄 Carinho na Barriga (+{{ gato.barriga }})
+                      </button>
+
+                      <button
+                        class="btn btn-pet btn-rabo"
+                        (click)="darCarinho(gato, 'rabo')"
+                        [disabled]="actionLoadingCatId === gato.id"
+                      >
+                        🐈 Carinho no Rabo (+{{ gato.rabo }})
+                      </button>
+                    </div>
+
+                    <!-- Rodapé do Card -->
+                    <div class="cat-footer">
+                      <span>Total de carinhos: <strong>{{ gato.total_carinhos || 0 }}</strong></span>
+                      <span>Último: <strong>{{ formatarData(gato.ultimo_carinho) }}</strong></span>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </section>
+        }
+
+        <!-- ABA 2: RANKING TOP 5 -->
+        @if (activeTab === 'ranking') {
+          <section class="tab-pane">
+            <div class="pane-header">
+              <div>
+                <h2>🏆 Hall da Fama - Top 5 Gatinhos</h2>
+                <p class="text-muted">Ordenado por Maior Nível, Menos Carinhos, Data Mais Antiga e Maior ID</p>
+              </div>
+              <button class="btn btn-secondary" (click)="carregarRanking()">🔄 Atualizar</button>
+            </div>
+
+            @if (rankingLoading) {
+              <div class="loading-state">
+                <span class="spinner"></span>
+                <p>Calculando ranking oficial...</p>
+              </div>
+            } @else {
+              <div class="table-responsive card">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Posição</th>
+                      <th>Gatinho</th>
+                      <th>Nível</th>
+                      <th>Raça</th>
+                      <th>Cor</th>
+                      <th>Tutor (Jogador)</th>
+                      <th>Carinhos</th>
+                      <th>Último Carinho</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (item of ranking; track item.id_gato) {
+                      <tr [class.highlight-row]="item.nome_dono === currentUser.nome">
+                        <td class="ranking-pos">
+                          @if (item.posicao === 1) { 🥇 1º }
+                          @else if (item.posicao === 2) { 🥈 2º }
+                          @else if (item.posicao === 3) { 🥉 3º }
+                          @else { {{ item.posicao }}º }
+                        </td>
+                        <td>
+                          <strong>{{ item.nome_gato }}</strong>
+                          <small class="text-muted d-block">ID: #{{ item.id_gato }}</small>
+                        </td>
+                        <td>
+                          <span class="badge badge-level">⭐ {{ item.level_gato }}</span>
+                        </td>
+                        <td>{{ item.raca }}</td>
+                        <td>{{ getCorBadge(item.cor) }}</td>
+                        <td>
+                          <strong>{{ item.nome_dono }}</strong>
+                          @if (item.nome_dono === currentUser.nome) {
+                            <span class="badge badge-you">Você</span>
+                          }
+                        </td>
+                        <td>{{ item.quantidade_carinhos }}</td>
+                        <td>{{ formatarData(item.data_ultimo_carinho) }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          </section>
+        }
+
+        <!-- ABA 3: RAÇAS & BÔNUS -->
+        @if (activeTab === 'racas') {
+          <section class="tab-pane">
+            <div class="pane-header">
+              <div>
+                <h2>📖 Raças e Preferências de Carinho</h2>
+                <p class="text-muted">Descubra em qual local cada raça ganha mais pontos de nível</p>
+              </div>
+              <button class="btn btn-secondary" (click)="carregarRacas()">🔄 Atualizar</button>
+            </div>
+
+            <div class="racas-grid">
+              @for (r of racas; track r.raca) {
+                <div class="raca-card card">
+                  <div class="raca-card-header">
+                    <span class="raca-icon">🐈</span>
+                    <h3>{{ r.raca | uppercase }}</h3>
+                  </div>
+                  <div class="raca-body">
+                    <div class="raca-stat">
+                      <span>🐾 Pata:</span>
+                      <strong>+{{ r.pata }} pts</strong>
+                    </div>
+                    <div class="raca-stat">
+                      <span>🫄 Barriga:</span>
+                      <strong>+{{ r.barriga }} pts</strong>
+                    </div>
+                    <div class="raca-stat">
+                      <span>🐈 Rabo:</span>
+                      <strong>+{{ r.rabo }} pts</strong>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          </section>
+        }
+
+        <!-- ABA 4: PAINEL ADMINISTRADOR -->
+        @if (activeTab === 'admin' && currentUser.isadmin) {
+          <section class="tab-pane">
+            <div class="pane-header">
+              <div>
+                <h2>🛡️ Painel Administrativo</h2>
+                <p class="text-muted">Acesso restrito a administradores (validado por <code>isadmin = true</code> nas funções PostgreSQL)</p>
+              </div>
+            </div>
+
+            <!-- Sub-navegação Admin -->
+            <div class="sub-nav">
+              <button
+                class="btn-subnav"
+                [class.active]="adminSubTab === 'jogadores'"
+                (click)="adminSubTab = 'jogadores'"
+              >
+                👥 Jogadores ({{ adminJogadores.length }})
+              </button>
+              <button
+                class="btn-subnav"
+                [class.active]="adminSubTab === 'racas'"
+                (click)="adminSubTab = 'racas'"
+              >
+                🐾 Raças ({{ racas.length }})
+              </button>
+              <button
+                class="btn-subnav"
+                [class.active]="adminSubTab === 'gatos'"
+                (click)="adminSubTab = 'gatos'"
+              >
+                🐈 Todos os Gatos ({{ adminGatos.length }})
+              </button>
+            </div>
+
+            <!-- Sub-Aba Admin: Jogadores -->
+            @if (adminSubTab === 'jogadores') {
+              <div class="card mt-3 p-3">
+                <div class="d-flex justify-between align-center mb-3">
+                  <h3>Gerenciar Jogadores</h3>
+                  <button class="btn btn-primary btn-sm" (click)="abrirModalNovoJogador()">
+                    + Novo Jogador
+                  </button>
+                </div>
+
+                <div class="table-responsive">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Nome</th>
+                        <th>Privilégio</th>
+                        <th>Total de Gatos</th>
+                        <th>Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (jog of adminJogadores; track jog.id) {
+                        <tr>
+                          <td>#{{ jog.id }}</td>
+                          <td><strong>{{ jog.nome }}</strong></td>
+                          <td>
+                            @if (jog.isadmin) {
+                              <span class="badge badge-admin">🛡️ Admin</span>
+                            } @else {
+                              <span class="badge badge-player">🎮 Jogador</span>
+                            }
+                          </td>
+                          <td>{{ jog.total_gatinhos }} gatinhos</td>
+                          <td>
+                            <button class="btn btn-sm btn-secondary" (click)="abrirModalEditarJogador(jog)">
+                              Editar
+                            </button>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            }
+
+            <!-- Sub-Aba Admin: Raças -->
+            @if (adminSubTab === 'racas') {
+              <div class="card mt-3 p-3">
+                <div class="d-flex justify-between align-center mb-3">
+                  <h3>Gerenciar Raças</h3>
+                  <button class="btn btn-primary btn-sm" (click)="abrirModalNovaRaca()">
+                    + Nova Raça
+                  </button>
+                </div>
+
+                <div class="table-responsive">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Nome da Raça</th>
+                        <th>Bônus Pata (0-9)</th>
+                        <th>Bônus Barriga (0-9)</th>
+                        <th>Bônus Rabo (0-9)</th>
+                        <th>Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (r of racas; track r.raca) {
+                        <tr>
+                          <td><strong>{{ r.raca }}</strong></td>
+                          <td>+{{ r.pata }}</td>
+                          <td>+{{ r.barriga }}</td>
+                          <td>+{{ r.rabo }}</td>
+                          <td>
+                            <button class="btn btn-sm btn-secondary" (click)="abrirModalEditarRaca(r)">
+                              Configurar Bônus
+                            </button>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            }
+
+            <!-- Sub-Aba Admin: Todos os Gatos -->
+            @if (adminSubTab === 'gatos') {
+              <div class="card mt-3 p-3">
+                <div class="d-flex justify-between align-center mb-3">
+                  <h3>Todos os Gatos Cadastrados no Banco</h3>
+                  <button class="btn btn-secondary btn-sm" (click)="carregarAdminData()">🔄 Atualizar</button>
+                </div>
+
+                <div class="table-responsive">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>ID Gato</th>
+                        <th>Nome</th>
+                        <th>Raça</th>
+                        <th>Cor</th>
+                        <th>Nível</th>
+                        <th>Dono (Tutor)</th>
+                        <th>Total Carinhos</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (g of adminGatos; track g.id) {
+                        <tr>
+                          <td>#{{ g.id }}</td>
+                          <td><strong>{{ g.nome }}</strong></td>
+                          <td>{{ g.raca }}</td>
+                          <td>{{ getCorBadge(g.cor) }}</td>
+                          <td><span class="badge badge-level">⭐ {{ g.level }}</span></td>
+                          <td>{{ g.nome_dono }} (#{{ g.id_jogador }})</td>
+                          <td>{{ g.total_carinhos }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            }
+          </section>
+        }
+      </div>
+    }
+  </main>
+
+  <!-- MODAL: CONFIGURAÇÃO DOS 5 PARÂMETROS AUTH0 E AIVEN -->
+  @if (showConfigModal) {
+    <div class="modal-backdrop">
+      <div class="modal-dialog">
+        <div class="modal-content card">
+          <div class="modal-header">
+            <h3>⚙️ Configurações da API (Auth0 & Aiven)</h3>
+            <button class="modal-close" (click)="fecharConfig()">&times;</button>
+          </div>
+
+          <div class="modal-body">
+            <p class="text-muted mb-3">
+              Informe os 5 parâmetros para conectar ao Auth0 e ao PostgREST da Aiven. Os dados são salvos no seu navegador (<code>localStorage</code>).
+            </p>
+
+            @if (configStatusMsg) {
+              <div class="alert" [class]="'alert-' + configStatusType">
+                {{ configStatusMsg }}
+              </div>
+            }
+
+            <form (submit)="salvarETestarConfig(); $event.preventDefault();">
+              <div class="form-group">
+                <label for="auth0_domain">
+                  1. auth0_domain
+                  <small class="text-muted d-block">Ex: <code>dev-vacadbteste.us.auth0.com</code></small>
+                </label>
+                <input
+                  id="auth0_domain"
+                  type="text"
+                  class="form-control"
+                  [(ngModel)]="config.auth0_domain"
+                  name="auth0_domain"
+                  placeholder="exemplo.us.auth0.com"
+                  required
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="auth0_client_id">
+                  2. auth0_client_id
+                  <small class="text-muted d-block">Client ID da aplicação Machine-to-Machine no Auth0</small>
+                </label>
+                <input
+                  id="auth0_client_id"
+                  type="text"
+                  class="form-control"
+                  [(ngModel)]="config.auth0_client_id"
+                  name="auth0_client_id"
+                  placeholder="Client ID do Auth0"
+                  required
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="auth0_client_secret">
+                  3. auth0_client_secret
+                  <small class="text-muted d-block">Client Secret da aplicação Machine-to-Machine</small>
+                </label>
+                <div class="input-with-button">
+                  <input
+                    id="auth0_client_secret"
+                    [type]="showSecret ? 'text' : 'password'"
+                    class="form-control"
+                    [(ngModel)]="config.auth0_client_secret"
+                    name="auth0_client_secret"
+                    placeholder="Client Secret do Auth0"
+                    required
+                  />
+                  <button type="button" class="btn btn-secondary btn-sm" (click)="showSecret = !showSecret">
+                    {{ showSecret ? 'Ocultar' : 'Exibir' }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="auth0_audience">
+                  4. auth0_audience
+                  <small class="text-muted d-block">Audience da API configurada no Auth0</small>
+                </label>
+                <input
+                  id="auth0_audience"
+                  type="text"
+                  class="form-control"
+                  [(ngModel)]="config.auth0_audience"
+                  name="auth0_audience"
+                  placeholder="https://sua-api-identificador/"
+                  required
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="aiven_domain">
+                  5. aiven_domain
+                  <small class="text-muted d-block">Host / endpoint do PostgREST da Aiven</small>
+                </label>
+                <input
+                  id="aiven_domain"
+                  type="text"
+                  class="form-control"
+                  [(ngModel)]="config.aiven_domain"
+                  name="aiven_domain"
+                  placeholder="pg-xxxx.aivencloud.com:20582"
+                  required
+                />
+              </div>
+
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" (click)="fecharConfig()">Fechar</button>
+                <button type="submit" class="btn btn-primary" [disabled]="configTesting">
+                  @if (configTesting) {
+                    <span>⏳ Testando e Salvando...</span>
+                  } @else {
+                    <span>💾 Salvar e Testar Conexão</span>
+                  }
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- MODAL: PARABÉNS PELO NOVO GATO -->
+  @if (novoGatoModal) {
+    <div class="modal-backdrop">
+      <div class="modal-dialog">
+        <div class="modal-content card text-center p-4">
+          <span class="modal-hero-icon">🎉 🐱 🎊</span>
+          <h2>Parabéns pelo Novo Gatinho!</h2>
+          <p class="modal-message mt-2">{{ novoGatoModal.mensagem }}</p>
+
+          <div class="cat-preview mt-3 p-3">
+            <p><strong>Raça:</strong> {{ novoGatoModal.raca }}</p>
+            <p><strong>Cor:</strong> {{ getCorBadge(novoGatoModal.cor) }}</p>
+            <p><strong>ID do Gato:</strong> #{{ novoGatoModal.id }}</p>
+            <p><strong>Nível Inicial:</strong> ⭐ 1</p>
+          </div>
+
+          <button class="btn btn-primary mt-4" (click)="novoGatoModal = null">
+            Ir Cuidar Dele!
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- MODAL ADMIN: SALVAR JOGADOR -->
+  @if (showAdminPlayerModal) {
+    <div class="modal-backdrop">
+      <div class="modal-dialog">
+        <div class="modal-content card p-4">
+          <div class="modal-header">
+            <h3>{{ adminPlayerForm.id ? 'Editar Jogador #' + adminPlayerForm.id : 'Criar Novo Jogador' }}</h3>
+            <button class="modal-close" (click)="showAdminPlayerModal = false">&times;</button>
+          </div>
+
+          <form (submit)="salvarJogadorAdmin(); $event.preventDefault();" class="mt-3">
+            <div class="form-group">
+              <label>Nome do Jogador</label>
+              <input type="text" class="form-control" [(ngModel)]="adminPlayerForm.nome" name="nome" required />
+            </div>
+
+            <div class="form-group">
+              <label>Senha {{ adminPlayerForm.id ? '(Deixe em branco para não alterar)' : '' }}</label>
+              <input type="password" class="form-control" [(ngModel)]="adminPlayerForm.userpassword" name="userpassword" />
+            </div>
+
+            <div class="form-group checkbox-group">
+              <label>
+                <input type="checkbox" [(ngModel)]="adminPlayerForm.isadmin" name="isadmin" />
+                É Administrador? (isadmin)
+              </label>
+            </div>
+
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" (click)="showAdminPlayerModal = false">Cancelar</button>
+              <button type="submit" class="btn btn-primary">Salvar Jogador</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- MODAL ADMIN: SALVAR RAÇA -->
+  @if (showAdminRacaModal) {
+    <div class="modal-backdrop">
+      <div class="modal-dialog">
+        <div class="modal-content card p-4">
+          <div class="modal-header">
+            <h3>Configurar Raça</h3>
+            <button class="modal-close" (click)="showAdminRacaModal = false">&times;</button>
+          </div>
+
+          <form (submit)="salvarRacaAdmin(); $event.preventDefault();" class="mt-3">
+            <div class="form-group">
+              <label>Nome da Raça</label>
+              <input type="text" class="form-control" [(ngModel)]="adminRacaForm.raca" name="raca" required />
+            </div>
+
+            <div class="form-group">
+              <label>Bônus de Carinho na Pata (0 a 9)</label>
+              <input type="number" min="0" max="9" class="form-control" [(ngModel)]="adminRacaForm.pata" name="pata" required />
+            </div>
+
+            <div class="form-group">
+              <label>Bônus de Carinho na Barriga (0 a 9)</label>
+              <input type="number" min="0" max="9" class="form-control" [(ngModel)]="adminRacaForm.barriga" name="barriga" required />
+            </div>
+
+            <div class="form-group">
+              <label>Bônus de Carinho no Rabo (0 a 9)</label>
+              <input type="number" min="0" max="9" class="form-control" [(ngModel)]="adminRacaForm.rabo" name="rabo" required />
+            </div>
+
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" (click)="showAdminRacaModal = false">Cancelar</button>
+              <button type="submit" class="btn btn-primary">Salvar Raça</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  }
+</div>
