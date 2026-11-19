@@ -13,6 +13,7 @@ V{NNN}__{descricao_snake_case}.sql
 | `V001__schema_inicial_gatinhosdb.sql` | Primeira versão — schema base |
 | `V002__seguranca_e_funcoes_rpc.sql` | Adiciona autenticação e funções RPC |
 | `V003__ocultar_pontuacao_racas.sql` | Esconde bônus de raças dos jogadores |
+| `V004__limite_um_carinho_por_dia.sql` | Limita a 1 carinho por dia por gatinho |
 
 **Regra de ouro:** Uma vez que uma migração é commitada no Git, ela é **imutável**. Para alterar algo, crie um novo `V00N`.
 
@@ -25,6 +26,7 @@ V{NNN}__{descricao_snake_case}.sql
 | `V001__schema_inicial_gatinhosdb.sql` | Schema original: tabelas `jogador`, `raca`, `gatinho` |
 | `V002__seguranca_e_funcoes_rpc.sql` | Colunas `userpassword`/`isadmin`, funções RPC com `SECURITY DEFINER`, revogação de acesso direto |
 | `V003__ocultar_pontuacao_racas.sql` | Remove `pata/barriga/rabo` de `listar_meus_gatinhos`; `listar_racas` passa a exigir `isadmin=TRUE` |
+| `V004__limite_um_carinho_por_dia.sql` | Recria `carinho_pata_fn`, `carinho_barriga_fn` e `carinho_rabo_fn`: no máximo 1 carinho por dia por gatinho, em qualquer local |
 | `schema_migrations_setup.sql` | Cria a tabela `schema_migrations` e registra V001–V003 como já aplicadas |
 | `run_migrations.py` | Script Python para aplicar migrações pendentes automaticamente |
 
