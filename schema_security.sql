@@ -59,7 +59,7 @@ BEGIN
 END;
 $$;
 
--- 4. FUNÇÃO: LISTAR GATINHOS DO USUÁRIO
+-- 4. FUNÇÃO: LISTAR GATINHOS DO USUÁRIO (Sem expor bônus das raças)
 CREATE OR REPLACE FUNCTION listar_meus_gatinhos(
     app_userid INT,
     app_userpassword VARCHAR
@@ -70,9 +70,6 @@ RETURNS TABLE (
     cor VARCHAR,
     raca VARCHAR,
     level INT,
-    pata SMALLINT,
-    barriga SMALLINT,
-    rabo SMALLINT,
     total_carinhos BIGINT,
     ultimo_carinho TIMESTAMP
 )
@@ -89,16 +86,12 @@ BEGIN
         g.cor,
         g.raca,
         g.level,
-        COALESCE(r.pata, 0::SMALLINT),
-        COALESCE(r.barriga, 0::SMALLINT),
-        COALESCE(r.rabo, 0::SMALLINT),
         COUNT(c.id_gatinho) AS total_carinhos,
         MAX(c.data_hora) AS ultimo_carinho
     FROM gatinho g
-    LEFT JOIN raca r ON g.raca = r.raca
     LEFT JOIN carinho c ON g.id = c.id_gatinho
     WHERE g.id_jogador = app_userid
-    GROUP BY g.id, g.nome, g.cor, g.raca, g.level, r.pata, r.barriga, r.rabo
+    GROUP BY g.id, g.nome, g.cor, g.raca, g.level
     ORDER BY g.level DESC, g.id ASC;
 END;
 $$;
@@ -394,7 +387,7 @@ BEGIN
 END;
 $$;
 
--- 9. FUNÇÃO: LISTAR RAÇAS
+-- 9. FUNÇÃO: LISTAR RAÇAS (Restrita a administradores)
 CREATE OR REPLACE FUNCTION listar_racas(
     app_userid INT,
     app_userpassword VARCHAR
@@ -409,7 +402,7 @@ LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 BEGIN
-    PERFORM autenticar_jogador(app_userid, app_userpassword, FALSE);
+    PERFORM autenticar_jogador(app_userid, app_userpassword, TRUE);
     RETURN QUERY SELECT r.raca, r.pata, r.barriga, r.rabo FROM raca r ORDER BY r.raca;
 END;
 $$;

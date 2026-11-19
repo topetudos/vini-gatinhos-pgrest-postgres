@@ -48,7 +48,7 @@ export class App implements OnInit {
   public loginError = '';
 
   // --- Abas e Navegação ---
-  public activeTab: 'gatinhos' | 'ranking' | 'racas' | 'admin' = 'gatinhos';
+  public activeTab: 'gatinhos' | 'ranking' | 'admin' = 'gatinhos';
   public adminSubTab: 'jogadores' | 'racas' | 'gatos' = 'jogadores';
 
   // --- Dados do Jogo ---
@@ -202,8 +202,8 @@ export class App implements OnInit {
   public carregarDadosIniciais(): void {
     this.carregarGatinhos();
     this.carregarRanking();
-    this.carregarRacas();
     if (this.currentUser?.isadmin) {
+      this.carregarRacas();
       this.carregarAdminData();
     }
     this.cdr.markForCheck();

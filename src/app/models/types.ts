@@ -19,9 +19,6 @@ export interface Gatinho {
   cor: string;
   raca: string;
   level: number;
-  pata: number;
-  barriga: number;
-  rabo: number;
   total_carinhos: number;
   ultimo_carinho?: string;
 }
