@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { ApiConfig } from '../models/types';
+import { DEFAULT_API_CONFIG } from '../../environments/app-config';
 
 interface Auth0TokenResponse {
   access_token: string;
@@ -39,13 +40,7 @@ export class Auth0Service {
         console.error('Falha ao ler configuracao do localStorage', e);
       }
     }
-    return {
-      auth0_domain: '',
-      auth0_client_id: '',
-      auth0_client_secret: '',
-      auth0_audience: '',
-      aiven_domain: ''
-    };
+    return { ...DEFAULT_API_CONFIG };
   }
 
   public saveConfig(config: ApiConfig): void {

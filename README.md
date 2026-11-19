@@ -99,6 +99,29 @@ Basta ir em **Settings** &rarr; **Pages** &rarr; **Source**: selecionar **GitHub
 
 ---
 
+## 📱 Como Gerar o APK Android (Capacitor)
+
+O app Android usa o mesmo código Angular, empacotado com [Capacitor](https://capacitorjs.com/). Os 5 parâmetros podem vir pré-preenchidos no APK, sem ir para o git.
+
+### Pré-requisitos
+- JDK 21 (`JAVA_HOME`)
+- Android SDK com `platforms;android-36` e `build-tools;36.0.0` (`ANDROID_HOME`, ex: `~/Android/Sdk`)
+
+### Passos
+```bash
+# 1. Criar a config local (ignorada pelo git) e preencher os valores reais
+cp src/environments/app-config.local.example.ts src/environments/app-config.local.ts
+
+# 2. Gerar o APK de debug
+nvm use
+npm run apk:debug
+```
+O APK fica em `android/app/build/outputs/apk/debug/app-debug.apk`.
+
+> ⚠️ O APK carrega o `auth0_client_secret` dentro do bundle e pode ser descompilado. Distribua só para pessoas de confiança. O build web (`npm run build` / GitHub Pages) **não** inclui esses valores.
+
+---
+
 ## 📋 Funcionalidades da Aplicação
 
 - **🐾 Meus Gatinhos**:

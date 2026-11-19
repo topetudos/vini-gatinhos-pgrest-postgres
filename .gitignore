@@ -39,6 +39,20 @@ testem.log
 /typings
 __screenshots__/
 
+# Configuração local com secrets (usada só no build Android)
+/src/environments/app-config.local.ts
+
+# Android (Capacitor): artefatos de build e configs locais
+/android/app/build/
+/android/build/
+/android/.gradle/
+/android/local.properties
+/android/app/src/main/assets/public/
+*.apk
+*.aab
+*.keystore
+*.jks
+
 # System files
 .DS_Store
 Thumbs.db

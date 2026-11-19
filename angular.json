@@ -67,6 +67,22 @@
               ],
               "outputHashing": "all"
             },
+            "android": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/app-config.ts",
+                  "with": "src/environments/app-config.local.ts"
+                }
+              ],
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "500kB",
+                  "maximumError": "1MB"
+                }
+              ],
+              "outputHashing": "all"
+            },
             "development": {
               "optimization": false,
               "extractLicenses": false,
