@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Auth0Service } from './services/auth0.service';
@@ -24,6 +24,7 @@ import {
 export class App implements OnInit {
   public auth0 = inject(Auth0Service);
   public api = inject(GatinhosApiService);
+  public cdr = inject(ChangeDetectorRef);
 
   // --- Estado de Configurações (5 parâmetros) ---
   public config: ApiConfig = {
@@ -92,6 +93,7 @@ export class App implements OnInit {
     } else if (this.currentUser) {
       this.carregarDadosIniciais();
     }
+    this.cdr.markForCheck();
   }
 
   public showToast(message: string, type: 'success' | 'error' | 'info' = 'info'): void {
@@ -99,8 +101,11 @@ export class App implements OnInit {
       clearTimeout(this.toastTimeout);
     }
     this.toast = { message, type };
+    this.cdr.markForCheck();
+
     this.toastTimeout = setTimeout(() => {
       this.toast = null;
+      this.cdr.markForCheck();
     }, 4500);
   }
 
@@ -109,6 +114,7 @@ export class App implements OnInit {
     this.config = { ...this.auth0.getConfig() };
     this.configStatusMsg = '';
     this.showConfigModal = true;
+    this.cdr.markForCheck();
   }
 
   public fecharConfig(): void {
@@ -117,11 +123,13 @@ export class App implements OnInit {
       return;
     }
     this.showConfigModal = false;
+    this.cdr.markForCheck();
   }
 
   public async salvarETestarConfig(): Promise<void> {
     this.configTesting = true;
     this.configStatusMsg = '';
+    this.cdr.markForCheck();
 
     try {
       this.auth0.saveConfig(this.config);
@@ -132,18 +140,21 @@ export class App implements OnInit {
       this.configStatusType = 'success';
       this.configStatusMsg = 'Conexão com Auth0 validada com sucesso! Token gerado.';
       this.showToast('Configurações salvas e validadas!', 'success');
+      this.cdr.markForCheck();
 
       setTimeout(() => {
         this.showConfigModal = false;
         if (this.currentUser) {
           this.carregarDadosIniciais();
         }
+        this.cdr.markForCheck();
       }, 1200);
     } catch (err: any) {
       this.configStatusType = 'error';
       this.configStatusMsg = err.message || 'Erro ao validar conexão com Auth0.';
     } finally {
       this.configTesting = false;
+      this.cdr.markForCheck();
     }
   }
 
@@ -151,17 +162,20 @@ export class App implements OnInit {
   public async realizarLogin(): Promise<void> {
     if (!this.loginId || !this.loginPassword) {
       this.loginError = 'Informe o ID e a senha.';
+      this.cdr.markForCheck();
       return;
     }
 
     if (!this.auth0.isConfigured()) {
       this.showConfigModal = true;
       this.loginError = 'Configure primeiro as chaves de acesso Auth0 e Aiven.';
+      this.cdr.markForCheck();
       return;
     }
 
     this.loginLoading = true;
     this.loginError = '';
+    this.cdr.markForCheck();
 
     try {
       this.currentUser = await this.api.login(this.loginId, this.loginPassword);
@@ -171,6 +185,7 @@ export class App implements OnInit {
       this.loginError = err.message || 'Falha no login.';
     } finally {
       this.loginLoading = false;
+      this.cdr.markForCheck();
     }
   }
 
@@ -181,6 +196,7 @@ export class App implements OnInit {
     this.ranking = [];
     this.activeTab = 'gatinhos';
     this.showToast('Sessão encerrada.', 'info');
+    this.cdr.markForCheck();
   }
 
   public carregarDadosIniciais(): void {
@@ -190,22 +206,26 @@ export class App implements OnInit {
     if (this.currentUser?.isadmin) {
       this.carregarAdminData();
     }
+    this.cdr.markForCheck();
   }
 
   // --- Gatinhos do Jogador ---
   public async carregarGatinhos(): Promise<void> {
     this.gatinhosLoading = true;
+    this.cdr.markForCheck();
     try {
       this.gatinhos = await this.api.listarMeusGatinhos();
     } catch (err: any) {
       this.showToast(err.message, 'error');
     } finally {
       this.gatinhosLoading = false;
+      this.cdr.markForCheck();
     }
   }
 
   public async adotarNovoGato(): Promise<void> {
     this.adoptingCat = true;
+    this.cdr.markForCheck();
     try {
       const res = await this.api.ganharNovoGato();
       this.novoGatoModal = res;
@@ -215,17 +235,20 @@ export class App implements OnInit {
       this.showToast(err.message, 'error');
     } finally {
       this.adoptingCat = false;
+      this.cdr.markForCheck();
     }
   }
 
   public iniciarRenomear(gato: Gatinho): void {
     this.renamingCatId = gato.id;
     this.newCatName = gato.nome;
+    this.cdr.markForCheck();
   }
 
   public cancelarRenomear(): void {
     this.renamingCatId = null;
     this.newCatName = '';
+    this.cdr.markForCheck();
   }
 
   public async confirmarRenomear(idGato: number): Promise<void> {
@@ -240,12 +263,15 @@ export class App implements OnInit {
       await this.carregarGatinhos();
     } catch (err: any) {
       this.showToast(err.message, 'error');
+    } finally {
+      this.cdr.markForCheck();
     }
   }
 
   // --- Carinhos ---
   public async darCarinho(gato: Gatinho, local: 'pata' | 'barriga' | 'rabo'): Promise<void> {
     this.actionLoadingCatId = gato.id;
+    this.cdr.markForCheck();
     try {
       let res;
       if (local === 'pata') {
@@ -266,29 +292,34 @@ export class App implements OnInit {
       this.showToast(err.message, 'error');
     } finally {
       this.actionLoadingCatId = null;
+      this.cdr.markForCheck();
     }
   }
 
   // --- Ranking e Raças ---
   public async carregarRanking(): Promise<void> {
     this.rankingLoading = true;
+    this.cdr.markForCheck();
     try {
       this.ranking = await this.api.obterRanking();
     } catch (err: any) {
       console.error(err);
     } finally {
       this.rankingLoading = false;
+      this.cdr.markForCheck();
     }
   }
 
   public async carregarRacas(): Promise<void> {
     this.racasLoading = true;
+    this.cdr.markForCheck();
     try {
       this.racas = await this.api.listarRacas();
     } catch (err: any) {
       console.error(err);
     } finally {
       this.racasLoading = false;
+      this.cdr.markForCheck();
     }
   }
 
@@ -296,6 +327,7 @@ export class App implements OnInit {
   public async carregarAdminData(): Promise<void> {
     if (!this.currentUser?.isadmin) return;
     this.adminLoading = true;
+    this.cdr.markForCheck();
     try {
       this.adminJogadores = await this.api.adminListarJogadores();
       this.adminGatos = await this.api.adminListarTodosGatos();
@@ -303,17 +335,20 @@ export class App implements OnInit {
       this.showToast(`Admin: ${err.message}`, 'error');
     } finally {
       this.adminLoading = false;
+      this.cdr.markForCheck();
     }
   }
 
   public abrirModalNovoJogador(): void {
     this.adminPlayerForm = { id: null, nome: '', userpassword: '', isadmin: false };
     this.showAdminPlayerModal = true;
+    this.cdr.markForCheck();
   }
 
   public abrirModalEditarJogador(jog: AdminJogador): void {
     this.adminPlayerForm = { id: jog.id, nome: jog.nome, userpassword: '', isadmin: jog.isadmin };
     this.showAdminPlayerModal = true;
+    this.cdr.markForCheck();
   }
 
   public async salvarJogadorAdmin(): Promise<void> {
@@ -338,17 +373,21 @@ export class App implements OnInit {
       this.carregarAdminData();
     } catch (err: any) {
       this.showToast(err.message, 'error');
+    } finally {
+      this.cdr.markForCheck();
     }
   }
 
   public abrirModalNovaRaca(): void {
     this.adminRacaForm = { raca: '', pata: 1, barriga: 1, rabo: 1 };
     this.showAdminRacaModal = true;
+    this.cdr.markForCheck();
   }
 
   public abrirModalEditarRaca(r: Raca): void {
     this.adminRacaForm = { raca: r.raca, pata: r.pata, barriga: r.barriga, rabo: r.rabo };
     this.showAdminRacaModal = true;
+    this.cdr.markForCheck();
   }
 
   public async salvarRacaAdmin(): Promise<void> {
@@ -369,6 +408,8 @@ export class App implements OnInit {
       this.carregarRacas();
     } catch (err: any) {
       this.showToast(err.message, 'error');
+    } finally {
+      this.cdr.markForCheck();
     }
   }
 
