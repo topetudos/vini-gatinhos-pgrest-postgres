@@ -15,6 +15,7 @@ V{NNN}__{descricao_snake_case}.sql
 | `V003__ocultar_pontuacao_racas.sql` | Esconde bônus de raças dos jogadores |
 | `V004__limite_um_carinho_por_dia.sql` | Limita a 1 carinho por dia por gatinho |
 | `V005__corrige_ambiguidade_admin_salvar.sql` | Corrige coluna ambígua nas funções admin de salvar |
+| `V006__limite_quatro_gatinhos.sql` | Limita a 4 gatinhos por jogador |
 
 **Regra de ouro:** Uma vez que uma migração é commitada no Git, ela é **imutável**. Para alterar algo, crie um novo `V00N`.
 
@@ -29,6 +30,7 @@ V{NNN}__{descricao_snake_case}.sql
 | `V003__ocultar_pontuacao_racas.sql` | Remove `pata/barriga/rabo` de `listar_meus_gatinhos`; `listar_racas` passa a exigir `isadmin=TRUE` |
 | `V004__limite_um_carinho_por_dia.sql` | Recria `carinho_pata_fn`, `carinho_barriga_fn` e `carinho_rabo_fn`: no máximo 1 carinho por dia por gatinho, em qualquer local |
 | `V005__corrige_ambiguidade_admin_salvar.sql` | Corrige erro 42702 (coluna ambígua) em `admin_salvar_jogador` e `admin_salvar_raca` |
+| `V006__limite_quatro_gatinhos.sql` | `ganhar_novo_gato` recusa quando o jogador já tem 4 gatinhos (com `FOR UPDATE` contra cliques simultâneos) |
 | `schema_migrations_setup.sql` | Cria a tabela `schema_migrations` e registra V001–V003 como já aplicadas |
 | `run_migrations.py` | Script Python para aplicar migrações pendentes automaticamente |
 
