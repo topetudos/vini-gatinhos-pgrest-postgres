@@ -4,6 +4,8 @@ Aplicação web desenvolvida em **Angular 22** (Node v26) para gerenciamento e i
 
 A aplicação foi preparada para ser publicada diretamente no **GitHub Pages**.
 
+> 📚 Toda a estrutura de acesso ao banco (PostgreSQL na Aiven exposto pela Data API/PostgREST, autenticado com Auth0) foi baseada no tutorial oficial da Aiven: [Aiven for PostgreSQL® Data API tutorial](https://aiven.io/docs/products/postgresql/howto/data-api/tutorial).
+
 ---
 
 ## 🔒 Modelo de Segurança e Blindagem do Banco de Dados
