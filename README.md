@@ -146,6 +146,24 @@ Para instalar, copie o arquivo para o celular e abra (o Android pede permissão 
   - Consultar os bônus de cada raça (`listar_racas`) e criar/atualizar raças e pontuações de carinho (`admin_salvar_raca`). Os bônus ficam ocultos para jogadores comuns: descobrir faz parte do jogo.
   - Visão global de todos os gatinhos e tutores do sistema (`admin_listar_todos_gatos`).
 
+### 🎯 Objetivo e como ganhar
+
+O objetivo é colocar seus gatinhos no **Ranking Top 5**, de preferência em 1º lugar. O ranking reúne os gatinhos de todos os jogadores. Não há fim de jogo: ganha quem estiver no topo.
+
+**Como o ranking ordena** (`obter_ranking_gatinhos`):
+1. Maior **level**.
+2. Empate: **menos carinhos** recebidos (premia quem subiu com eficiência).
+3. Novo empate: quem chegou primeiro (último carinho mais antigo).
+4. Por último: maior ID.
+
+**Como o level sobe:** cada gatinho recebe no máximo 1 carinho por dia, na pata, na barriga ou no rabo. O carinho soma ao level um bônus que depende da **raça** e do **local**. Alguns locais não valem nada para certas raças. Os bônus ficam ocultos para jogadores comuns: descobrir o melhor local de cada raça faz parte do jogo.
+
+**Dicas:**
+- Descubra o local que mais rende para cada raça. Um carinho que não soma nada gasta o carinho do dia e ainda pesa contra você no desempate.
+- Dê carinho todos os dias em todos os gatinhos. Com o limite diário, constância é o que mais conta.
+- Tenha 4 gatinhos, o máximo permitido: são 4 chances de aparecer no Top 5.
+- Algumas raças sobem mais rápido que outras. Se um gatinho rende pouco mesmo no melhor local, os outros vão ultrapassá-lo.
+
 ### 📏 Regras do jogo (aplicadas no banco)
 
 | Regra | Onde | Mensagem de erro |
